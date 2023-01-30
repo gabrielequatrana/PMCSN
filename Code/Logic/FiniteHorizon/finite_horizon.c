@@ -9,7 +9,8 @@
 // Start a finite horizon simulation
 void finite_horizon_simulation(int reps) {
     printf("\n==== Finite Horizon Simulation | simulation_time %d | num_repetitions %d ====", SLOTS_SUM, NUM_REPS);
-    
+
+    printf("PRTZ");
     // Initialize configuration
     init_config();
     print_configuration(&config);
