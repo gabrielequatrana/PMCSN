@@ -42,7 +42,7 @@ char *string_node_type(enum node_type type) {
 // TODO Compute statistics of the clock
 void compute_clock_statistics(network_struct *networkStruct, struct node nodesStruct[], double current_clock) {
     char filename[100];
-    snprintf(filename, 100, "arinzarunza");
+    snprintf(filename, 100, "results/finite_horizon/continuos_finite.csv");
     FILE *csv;
     csv = open_csv_append_mode(filename);
 
@@ -81,7 +81,7 @@ void compute_clock_statistics(network_struct *networkStruct, struct node nodesSt
         double mu = 1 / service;
         double thr = min(m * mu, lambda_i);
         
-        if (i == NODO_TRE) {
+        if (i == NODO_QUATTRO) {
             thr = lambda_i;
         }
 
@@ -95,7 +95,7 @@ void compute_clock_statistics(network_struct *networkStruct, struct node nodesSt
 
 // Print a separation line
 void print_line() {
-    printf("\n————————————————————————————————————————————————————————————————————————————————————————\n");
+    printf("\n----------------------------------------------------------------------------------------------\n");
 }
 
 // Print simulation configuration 
@@ -103,7 +103,7 @@ void print_configuration(network_configuration *networkConfiguration) {
     for (int slot = 0; slot < 3; slot++) {
         printf("\nSlot %d\n", slot);
         for (int node = 0; node < NUM_NODES; node++) {
-            printf("...%s: %d\n", string_node_type(node), networkConfiguration->slot_config[slot][node]);
+            printf("> %s: %d\n", string_node_type(node), networkConfiguration->slot_config[slot][node]);
         }
     }
 }

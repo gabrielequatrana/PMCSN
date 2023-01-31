@@ -18,7 +18,7 @@ bool slot_switched[3];  // Used to check if the simulation switched to another t
 
 network_struct network;                         // Network information
 network_configuration config;                   // Network configuration
-network_configuration *config_ptr;              // Network configuration pointer
+// Network configuration pointer
 completions_list_struct completions_list;       // List of job completed during the simulation
 
 double rep_cost[NUM_REPS];                          // Costs of each repetition of the finite horizon simulation

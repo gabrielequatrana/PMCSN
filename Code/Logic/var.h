@@ -18,7 +18,6 @@ extern bool slot_switched[3];  // Used to check if the simulation switched to an
 
 extern network_struct network;                         // Network information
 extern network_configuration config;                   // Network configuration
-extern network_configuration *config_ptr;              // Network configuration pointer
 extern completions_list_struct completions_list;       // List of job completed during the simulation
 
 static const network_struct empty_network;                      // Used to reset the network when switching time slot

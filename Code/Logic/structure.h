@@ -44,6 +44,8 @@ typedef struct {
 
     double online_time;             // Server online time
     double last_time_online;        // Server last time online
+
+    bool need_reschedule;              // TODO
 } server;
 
 // Structure to implement the network configuration

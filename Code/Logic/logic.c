@@ -1,6 +1,8 @@
 #include "./../config.h"
 #include "./../Utils/utils.h"
 
+#include "./FiniteHorizon/finite_horizon.h"
+
 #include "logic.h"
 #include "var.h"
 
@@ -51,6 +53,7 @@ void init_nodes() {
             s.node = &nodes[i];
             s.service.service_time = 0.0;
             s.service.job_served = 0;
+            s.need_reschedule = false;
 
             network.server_list[i][j] = s;
 
@@ -75,7 +78,7 @@ double generate_arrival_time(double current) {
 }
 
 // Initialize the network 
-void init_network() {
+void init_network(int rep) {
     
     // Initialize some parameters
     network.config = &config;
@@ -89,9 +92,9 @@ void init_network() {
     init_nodes();
 
     // Set the current time slot in finite horizon simulation
-//    if (strcmp(simulation_mode, "FINITE") == 0) {
-//        set_time_slot(rep);
-//    }
+    if (strcmp(simulation_mode, "FINITE") == 0) {
+        set_time_slot(rep);
+    }
 
     // Initialize some parameters
     job_completed = 0;
@@ -193,10 +196,10 @@ void deactivate_servers(int node) {
 
         // TODO
         if (s->status == BUSY) {
-            // TODO
+            s->need_reschedule = true;
         }
 
-            // Deactivate server
+        // Deactivate server
         else {
             s->online = OFFLINE;
             s->online_time += (clock.current - s->last_time_online);
@@ -388,7 +391,7 @@ void process_completion(struct completion c) {
     remove_from_completions_list(&completions_list, c);
 
     // TODO
-    if (nodes[node_type].queue_jobs > 0 ) {
+    if (nodes[node_type].queue_jobs > 0 && !c.server->need_reschedule) {
         nodes[node_type].queue_jobs--;
         double service = generate_service_time(node_type, c.server->stream);
         c.value = clock.current + service;
@@ -403,6 +406,12 @@ void process_completion(struct completion c) {
     }
 
     // TODO RESCHEDULED
+    if (c.server->need_reschedule) {
+        c.server->online = OFFLINE;
+        c.server->online_time += (clock.current - c.server->last_time_online);
+        c.server->last_time_online = clock.current;
+        c.server->need_reschedule = false;
+    }
 
     // TODO
     if (node_type == NODO_QUATTRO) {

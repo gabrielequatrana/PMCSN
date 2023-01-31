@@ -8,9 +8,8 @@
 
 // Start a finite horizon simulation
 void finite_horizon_simulation(int reps) {
-    printf("\n==== Finite Horizon Simulation | simulation_time %d | num_repetitions %d ====", SLOTS_SUM, NUM_REPS);
+    printf("\n==== Finite Horizon Simulation | simulation_time %d | num_repetitions %d ====\n", SLOTS_SUM, NUM_REPS);
 
-    printf("PRTZ");
     // Initialize configuration
     init_config();
     print_configuration(&config);
@@ -23,13 +22,13 @@ void finite_horizon_simulation(int reps) {
         finite_horizon_run(rep);
 
         // TODO
-        if (rep == 0) { // TODO
+        if (rep == 0) {
             print_csv_utilization_finite_horizon(&network, clock.current, 2);
         }
 
         // Clear the environment after every run
         clear_environment(); 
-        print_progress_bar(rep, reps, rep - 1);
+        //print_progress_bar(rep, reps, rep - 1);
     }
 
     // Print results
@@ -42,8 +41,8 @@ void finite_horizon_simulation(int reps) {
 void finite_horizon_run(int rep) {
 
     // Initialize the network
-    init_network();
-    set_time_slot(0);
+    init_network(0);
+    //set_time_slot(0); //TODO vedere se si può fare
     
     // Repeat until the end of the simulation
     int n = 1;
@@ -54,7 +53,6 @@ void finite_horizon_run(int rep) {
 
         // Find the next completion and compute next clock
         struct completion *next_completion = &completions_list.list[0];
-        server *nextCompletionServer = next_completion->server;
         clock.next = min(next_completion->value, clock.arrival);
         
         // Update nodes time sum

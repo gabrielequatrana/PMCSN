@@ -31,7 +31,7 @@ void infinite_horizon_simulation(int timeSlot) {
     clear_environment();
     
     // Initialize the network
-    init_network();
+    init_network(0);
     network.time_slot = timeSlot;
 
     // Update the network

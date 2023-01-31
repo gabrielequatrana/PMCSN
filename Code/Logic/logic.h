@@ -2,7 +2,7 @@
 
 // Export general logic methods used by finite/infinite horizon simulations
 void clear_environment();
-void init_network();
+void init_network(int rep);
 
 void process_arrival();
 void process_completion(struct completion c);
