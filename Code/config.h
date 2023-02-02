@@ -16,16 +16,16 @@ void init_config();
 #define NUM_NODES 4     // Number of nodes
 #define MAX_SERVERS 50  // Max number of servers of each node
 #define START 0.0       // Start time
-#define DEBUG true      // TODO Enable debug mode
+#define DEBUG true     // Enable debug functions
 
 // Server states
-#define BUSY 1      // Server busy
-#define IDLE 0      // Server busy
+#define BUSY 1  // Server busy
+#define IDLE 0  // Server busy
 
-#define ONLINE 1    // Server activated
-#define OFFLINE 0   // Server deactivated
+#define ACTIVATED   1   // Server activated
+#define DEACTIVATED 0   // Server deactivated
 
-#define USED 1      // Server used
+#define USED     1  // Server used
 #define NOT_USED 0  // Server not used
 
 // Configuration of time slots

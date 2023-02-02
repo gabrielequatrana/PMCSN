@@ -21,9 +21,13 @@ void finite_horizon_simulation(int reps) {
         // Launch a run
         finite_horizon_run(rep);
 
-        // TODO
+        // Utilization computed for the first repetition
         if (rep == 0) {
             print_csv_utilization_finite_horizon(&network, clock.current, 2);
+        }
+
+        if (DEBUG && rep == reps-1) {
+            print_statistics(&network, nodes, clock.current);
         }
 
         // Clear the environment after every run
@@ -41,8 +45,7 @@ void finite_horizon_simulation(int reps) {
 void finite_horizon_run(int rep) {
 
     // Initialize the network
-    init_network(0);
-    //set_time_slot(0); //TODO vedere se si può fare
+    init_network();
     
     // Repeat until the end of the simulation
     int n = 1;
@@ -76,9 +79,9 @@ void finite_horizon_run(int rep) {
             process_completion(*next_completion);
         }
 
-        // TODO
+        // Compute clock statistics every 5 minutes (300 seconds)
         if (clock.current >= (n-1)*300 && clock.current < n*300 && job_completed > 16 && clock.arrival < SLOTS_SUM) {
-            compute_clock_statistics(&network, nodes, clock.current);
+            compute_continuous_statistics(&network, nodes, clock.current);
             n++;
         }
     }
@@ -115,11 +118,9 @@ void compute_statistics_finite_horizon(network_struct *networkStruct, struct nod
 
         int arrivals = nodesStruct[i].total_arrivals;
         int real_arrivals = arrivals - nodesStruct[i].total_losses;
-        int job_queue = nodesStruct[i].queue_jobs;
         double inter = current_clock / nodesStruct[i].total_arrivals;
 
         double wait = nodesStruct[i].time.node / arrivals;
-        double delay = nodesStruct[i].time.queue / real_arrivals;
         double service = nodesStruct[i].time.server / real_arrivals;
 
         double external_arrival_rate = 1 / (current_clock / nodesStruct[NODO_UNO].total_arrivals);
@@ -133,11 +134,61 @@ void compute_statistics_finite_horizon(network_struct *networkStruct, struct nod
 
         double visit = thr / external_arrival_rate;
         visit_rt += wait * visit;
-
-        double utilization = lambda_i / (m * mu);
     }
 
     rt_arr[rep][timeSlot] = visit_rt;
+}
+
+// Compute statistics for continuous analysis
+void compute_continuous_statistics(network_struct *networkStruct, struct node nodesStruct[], double current_clock) {
+    char filename[100];
+    snprintf(filename, 100, "results/finite_horizon/continuos_finite.csv");
+    FILE *csv;
+    csv = open_csv_append_mode(filename);
+
+    double visit_rt = 0;
+    int timeSlot = networkStruct->time_slot;
+    double m = 0.0;
+    for (int i = 0; i < NUM_NODES; i++) {
+        if (timeSlot == 0) {
+            m = networkStruct->online_servers[i];
+        }
+
+        else if (timeSlot == 1) {
+            double s1 = networkStruct->config->slot_config[0][i];
+            double s2 = networkStruct->online_servers[i];
+            m = (3.0 * s1 + 11.0 * s2) / 14.0;
+        }
+
+        else if (timeSlot == 2) {
+            double s1 = networkStruct->config->slot_config[0][i];
+            double s2 = networkStruct->config->slot_config[1][i];
+            double s3 = networkStruct->online_servers[i];
+            m = (3.0 * s1 + 11.0 * s2 + 5.0 * s3) / 19.0;
+        }
+
+        int arrivals = nodesStruct[i].total_arrivals;
+        int real_arrivals = arrivals - nodesStruct[i].total_losses;
+        double inter = current_clock / nodesStruct[i].total_arrivals;
+
+        double wait = nodesStruct[i].time.node / arrivals;
+        double service = nodesStruct[i].time.server / real_arrivals;
+
+        double external_arrival_rate = 1 / (current_clock / nodesStruct[NODO_UNO].total_arrivals);
+        double lambda_i = 1 / inter;
+        double mu = 1 / service;
+        double thr = min(m * mu, lambda_i);
+
+        if (i == NODO_QUATTRO) {
+            thr = lambda_i;
+        }
+
+        double visit = thr / external_arrival_rate;
+        visit_rt += wait * visit;
+    }
+
+    append_on_csv_2(csv, visit_rt, current_clock);
+    fclose(csv);
 }
 
 // Write in a csv file the finite horizon statistics
@@ -203,7 +254,7 @@ void set_time_slot(int rep) {
         // Compute statistics
         compute_statistics_finite_horizon(&network, nodes, clock.current, finite_horizon_statistics, rep);
 
-        // TODO
+        // Utilization computed for the first repetition
         if (rep == 0) {
             print_csv_utilization_finite_horizon(&network, clock.current, network.time_slot);
         }
@@ -220,7 +271,7 @@ void set_time_slot(int rep) {
         // Compute statistics
         compute_statistics_finite_horizon(&network, nodes, clock.current, finite_horizon_statistics, rep);
 
-        //TODO
+        // Utilization computed for the first repetition
         if (rep == 0) {
             print_csv_utilization_finite_horizon(&network, clock.current, network.time_slot);
         }

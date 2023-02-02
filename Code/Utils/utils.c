@@ -7,6 +7,7 @@ double min(double x, double y) {
     return (x < y) ? x : y;
 }
 
+// Define the routing from NODE_UNO to NODE_DUE and NODE_TRE
 int routing() {
     double random = Uniform(0, 100);
     if (random < P_1) {
@@ -37,60 +38,6 @@ int find_destination_node(enum node_type type) {
 char *string_node_type(enum node_type type) {
     char *strings[] = {"NODO_UNO", "NODO_DUE", "NODO_TRE", "NODO_QUATTRO"};
     return strings[type];
-}
-
-// TODO Compute statistics of the clock
-void compute_clock_statistics(network_struct *networkStruct, struct node nodesStruct[], double current_clock) {
-    char filename[100];
-    snprintf(filename, 100, "results/finite_horizon/continuos_finite.csv");
-    FILE *csv;
-    csv = open_csv_append_mode(filename);
-
-    double visit_rt = 0;
-    int timeSlot = networkStruct->time_slot;
-    double m = 0.0;
-    for (int i = 0; i < NUM_NODES; i++) {
-        if (timeSlot == 0) {
-            m = networkStruct->online_servers[i];
-        }
-
-        else if (timeSlot == 1) {
-            double s1 = networkStruct->config->slot_config[0][i];
-            double s2 = networkStruct->online_servers[i];
-            m = (3.0 * s1 + 11.0 * s2) / 14.0;
-        }
-
-        else if (timeSlot == 2) {
-            double s1 = networkStruct->config->slot_config[0][i];
-            double s2 = networkStruct->config->slot_config[1][i];
-            double s3 = networkStruct->online_servers[i];
-            m = (3.0 * s1 + 11.0 * s2 + 5.0 * s3) / 19.0;
-        }
-
-        int arrivals = nodesStruct[i].total_arrivals;
-        int real_arrivals = arrivals - nodesStruct[i].total_losses;
-        int job_queue = nodesStruct[i].queue_jobs;
-        double inter = current_clock / nodesStruct[i].total_arrivals;
-
-        double wait = nodesStruct[i].time.node / arrivals;
-        double delay = nodesStruct[i].time.queue / real_arrivals;
-        double service = nodesStruct[i].time.server / real_arrivals;
-
-        double external_arrival_rate = 1 / (current_clock / nodesStruct[NODO_UNO].total_arrivals);
-        double lambda_i = 1 / inter;
-        double mu = 1 / service;
-        double thr = min(m * mu, lambda_i);
-        
-        if (i == NODO_QUATTRO) {
-            thr = lambda_i;
-        }
-
-        double visit = thr / external_arrival_rate;
-        visit_rt += wait * visit;
-    }
-
-    append_on_csv_2(csv, visit_rt, current_clock);
-    fclose(csv);
 }
 
 // Print a separation line
@@ -124,7 +71,7 @@ void print_progress_bar(double part, double total, double old_part) {
         fflush(stdout);
     }
 
-    for (int j = percentage / 2; j < 50 - 1; j++) {
+    for (int j = (int)percentage / 2; j < 50 - 1; j++) {
         printf(" ");
     }
 
@@ -191,7 +138,7 @@ int add_to_completions_list(completions_list_struct *c_list, struct completion c
 int remove_from_completions_list(completions_list_struct *c_list, struct completion c) {
     int n = c_list->num_completions;
     
-    int pos = search_element_completions_list(c_list, 0, n-1, c);
+    int pos = search_element_completions_list(c_list, n-1, c);
     if (pos == -1) {
         printf("Element not found");
         return n;
@@ -207,20 +154,61 @@ int remove_from_completions_list(completions_list_struct *c_list, struct complet
     return n-1;
 }
 
-// Search an element in the completions list
-int search_element_completions_list(completions_list_struct *c_list, int low, int high, struct completion c) {
-    if (high < low) {
-        return -1;
+// Search the index of an element in the completions list
+int search_element_completions_list(completions_list_struct *c_list, int len, struct completion c) {
+    for (int i = 0; i < len; i++) {
+        if (c_list->list[i].value == c.value) {
+            return i;
+        }
     }
 
-    int mid = (low + high) / 2;
-    if (c.value == c_list->list[mid].value) {
-        return mid;
-    }
+    return -1;
+}
 
-    if (c.value == c_list->list[mid].value) {
-        return search_element_completions_list(c_list, (mid+1), high, c);
-    }
+void print_statistics(network_struct *networkStruct, struct node nodesStruct[], double currentClock) {
+    char type[20];
+    double system_total_wait = 0;
+    for (int i = 0; i < NUM_NODES; i++) {
+        strcpy(type, string_node_type(nodesStruct[i].type));
 
-    return search_element_completions_list(c_list, low, (mid-1), c);
+        int m = networkStruct->online_servers[i];
+        int arr = nodesStruct[i].total_arrivals;
+        int r_arr = arr - nodesStruct[i].total_losses;
+        int jq = nodesStruct[i].queue_jobs;
+        double inter = currentClock / nodesStruct[i].total_arrivals;
+
+        double wait = nodesStruct[i].time.node / arr;
+        double delay = nodesStruct[i].time.queue / r_arr;
+        double service = nodesStruct[i].time.server / r_arr;
+
+        system_total_wait += wait;
+
+        printf("\n\n======== Result for block %s ========\n", type);
+        printf("Number of Servers ................... = %d\n", m);
+        printf("Arrivals ............................ = %d\n", arr);
+        printf("Completions.......................... = %d\n", nodesStruct[i].total_completions);
+        printf("Job in Queue at the end ............. = %d\n", jq);
+        printf("Average interarrivals................ = %6.6f\n", inter);
+
+        printf("Average wait ........................ = %6.6f\n", wait);
+        if (i == NODO_QUATTRO) {
+            printf("Average wait (2)..................... = %6.6f\n", nodesStruct[i].time.node / nodesStruct[i].total_arrivals);
+            printf("Number bypassed ..................... = %d\n", nodesStruct[i].total_losses);
+        }
+        printf("Average delay ....................... = %6.6f\n", delay);
+        printf("Average service time ................ = %6.6f\n", service);
+
+        printf("Average # in the queue .............. = %6.6f\n", nodesStruct[i].time.queue / currentClock);
+        printf("Average # in the node ............... = %6.6f\n", nodesStruct[i].time.node / currentClock);
+
+        printf("\n    server     utilization     avg service\n");
+        double p = 0;
+        int n = 0;
+        for (int j = 0; j < networkStruct->online_servers[i]; j++) {
+            server s = networkStruct->server_list[i][j];
+            printf("%8d %15.5f %15.2f\n", s.id, (s.service.service_time / currentClock), (s.service.service_time / s.service.job_served));
+            p += s.service.service_time / currentClock;
+            n++;
+        }
+    }
 }

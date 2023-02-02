@@ -2,10 +2,9 @@
 
 #include "structure.h"
 
-//TODO risistemare ordine, vedere se descrizioni giuste...
-
 extern char *simulation_mode;  // Finite/Infinite horizon simulation
 extern int time_slot;          // Time slot used in the infinite horizon simulation
+extern int streamID;           // Current streamID
 
 extern struct clock_struct clock;      // Clock to keep track of time
 extern struct node nodes[NUM_NODES];   // List of nodes in the network
@@ -31,6 +30,3 @@ extern double infinite_horizon_delay[BATCH_K][NUM_NODES];  // Infinite horizon s
 extern double finite_horizon_means_utilization[NUM_REPS][3][NUM_NODES];    // Average utilization of finite horizon simulation
 extern double infinite_horizon_means_utilization[BATCH_K][NUM_NODES];      // Average utilization of infinite horizon simulation
 extern double infinite_horizon_loss[BATCH_K];                              // Jobs lost during infinite horizon simulation
-
-extern int streamID;                   // Current streamID of the simulation
-extern server *next_completion_server; // Pointer to the server that will process the next completion in the simulation

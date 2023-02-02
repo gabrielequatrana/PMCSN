@@ -1,7 +1,7 @@
 #include "./../config.h"
 
-#ifndef GRANDPARENT_H
-#define GRANDPARENT_H
+#ifndef STRUCTURE_H
+#define STRUCTURE_H
 // Enumerate node types
 enum node_type {
     NODO_UNO,
@@ -27,7 +27,6 @@ struct service_time {
 
 // Structure to implement a job with a linked list
 struct job {
-    double arrival;     // Job arrival index
     struct job* next;   // Next job to process
 };
 
@@ -45,7 +44,7 @@ typedef struct {
     double online_time;             // Server online time
     double last_time_online;        // Server last time online
 
-    bool need_reschedule;              // TODO
+    bool stop_after_completion;     // The server will be stopped after a completion when true
 } server;
 
 // Structure to implement the network configuration
@@ -72,7 +71,7 @@ struct time {
 // Structure to implement a completion on a server
 struct completion {
     server *server; // Server that completed a job
-    double value;   // TODO
+    double value;   // Time of the completion
 };
 
 // Structure to implement a completions list
@@ -85,19 +84,12 @@ typedef struct {
 struct node {
     enum node_type type;        // Node type
 
-    double active_time;         // Node active time
-    double service_rate;        // Node service rate
-
-    struct job *tail_job;       // TODO
-    struct job *head_server;    // TODO
-    struct job *head_queue;     // TODO
+    struct job *tail_job;       // Last job in the queue
+    struct job *head_server;    // Job being served in the node
+    struct job *head_queue;     // First job in the queue
 
     int queue_jobs;             // Number of job in the queue
     int node_jobs;              // Number of job in the node
-
-    int batch_node;             // TODO
-    int batch_queue;            // TODO
-    int batch_arrivals;         // TODO
     
     int total_arrivals;         // Number of job arrived
     int total_completions;      // Number of job completed

@@ -6,9 +6,9 @@
 #include "logic.h"
 #include "var.h"
 
-// Reset the parameters of the network nodes
-void reset_nodes() {
-    clock.current_batch = clock.current; //TODO
+// Reset the parameters of the network nodes between batches
+void reset_nodes_parameters() {
+    clock.current_batch = clock.current;
     for (int i = 0; i < NUM_NODES; i++) {
         nodes[i].total_arrivals = 0;
         nodes[i].total_completions = 0;
@@ -45,7 +45,7 @@ void init_nodes() {
             server s;
             s.id = j;
             s.status = IDLE;
-            s.online = OFFLINE;
+            s.online = DEACTIVATED;
             s.used = NOT_USED;
             s.stream = streamID++;
             s.last_time_online = 0.0;
@@ -53,7 +53,7 @@ void init_nodes() {
             s.node = &nodes[i];
             s.service.service_time = 0.0;
             s.service.job_served = 0;
-            s.need_reschedule = false;
+            s.stop_after_completion = false;
 
             network.server_list[i][j] = s;
 
@@ -78,7 +78,7 @@ double generate_arrival_time(double current) {
 }
 
 // Initialize the network 
-void init_network(int rep) {
+void init_network() {
     
     // Initialize some parameters
     network.config = &config;
@@ -93,7 +93,7 @@ void init_network(int rep) {
 
     // Set the current time slot in finite horizon simulation
     if (strcmp(simulation_mode, "FINITE") == 0) {
-        set_time_slot(rep);
+        set_time_slot(0);
     }
 
     // Initialize some parameters
@@ -140,7 +140,7 @@ double generate_service_time(enum node_type type, int stream) {
     }
 }
 
-// Activate servers of a node
+// Activate servers of a node based on its configuration
 void activate_servers(int node) {
     int timeSlot = network.time_slot;
     int start = network.online_servers[node];
@@ -150,14 +150,14 @@ void activate_servers(int node) {
 
         // Server to activate
         server *s = &network.server_list[node][i];
-        s->online = ONLINE;
+        s->online = ACTIVATED;
         s->last_time_online = clock.current;
         s->used = USED;
 
         // If there are jobs in the queue, the server can process one
         if (nodes[node].queue_jobs > 0) {
 
-            //TODO
+            // Update the first job in the queue
             if (nodes[node].head_queue->next != NULL) {
                 struct job *temp = nodes[node].head_queue->next;
                 nodes[node].head_queue = temp;
@@ -194,14 +194,14 @@ void deactivate_servers(int node) {
         // Server to deactivate
         server *s = &network.server_list[node][i];
 
-        // TODO
+        // If the server is BUSY wait for completion to deactivate it
         if (s->status == BUSY) {
-            s->need_reschedule = true;
+            s->stop_after_completion = true;
         }
 
         // Deactivate server
         else {
-            s->online = OFFLINE;
+            s->online = DEACTIVATED;
             s->online_time += (clock.current - s->last_time_online);
             s->last_time_online = clock.current;
         }
@@ -237,7 +237,7 @@ void update_server_online_time() {
     for (int i = 0; i < NUM_NODES; i++) {
         for (int j = 0; j < MAX_SERVERS; j++) {
             server *s = &network.server_list[i][j];
-            if (s->online == ONLINE) {
+            if (s->online == ACTIVATED) {
                 s->online_time += (clock.current - s->last_time_online);
                 s->last_time_online = clock.current;
             }
@@ -260,7 +260,7 @@ server *find_free_server(struct node node) {
 }
 
 // Add a job to a node queue
-void add_job_to_queue(struct node *node, double arrival) {
+void add_job_to_queue(struct node *node) {
 
     // Allocate a job
     struct job *job = (struct job *)malloc(sizeof(struct job));
@@ -269,7 +269,6 @@ void add_job_to_queue(struct node *node, double arrival) {
     }
 
     // Initialize the job
-    job->arrival = arrival;
     job->next = NULL;
 
     // If the node has a last job in the queue, append the job
@@ -305,13 +304,13 @@ void remove_job_from_queue(struct node *node) {
     // The next job becomes the head
     node->head_server = job->next;
 
-    // TODO
+    // If there is a job in the queue, the head of the queue became the next job
     if (node->head_queue != NULL && node->head_queue->next != NULL) {
         struct job *temp = node->head_queue->next;
         node->head_queue = temp;
     }
 
-    // TODO
+    // Else there are no jobs in the queue
     else {
         node->head_queue = NULL;
     }
@@ -362,12 +361,12 @@ void process_arrival() {
         s->service.job_served++;
 
         add_to_completions_list(&completions_list, completion);
-        add_job_to_queue(&nodes[NODO_UNO], clock.arrival);
+        add_job_to_queue(&nodes[NODO_UNO]);
     }
 
     // Else add the job to the queue
     else {
-        add_job_to_queue(&nodes[NODO_UNO], clock.arrival);
+        add_job_to_queue(&nodes[NODO_UNO]);
         nodes[NODO_UNO].queue_jobs++;
     }
 
@@ -390,8 +389,8 @@ void process_completion(struct completion c) {
     remove_job_from_queue(&nodes[node_type]);
     remove_from_completions_list(&completions_list, c);
 
-    // TODO
-    if (nodes[node_type].queue_jobs > 0 && !c.server->need_reschedule) {
+    // Generate the next completion if there are jobs in queue
+    if (nodes[node_type].queue_jobs > 0 && !c.server->stop_after_completion) {
         nodes[node_type].queue_jobs--;
         double service = generate_service_time(node_type, c.server->stream);
         c.value = clock.current + service;
@@ -401,26 +400,30 @@ void process_completion(struct completion c) {
 
         add_to_completions_list(&completions_list, c);
     }
+
+    // Else the server is IDLE
     else {
         c.server->status = IDLE;
     }
 
-    // TODO RESCHEDULED
-    if (c.server->need_reschedule) {
-        c.server->online = OFFLINE;
+    // Deactivate the server after the completion if it is flagged
+    if (c.server->stop_after_completion) {
+        c.server->online = DEACTIVATED;
         c.server->online_time += (clock.current - c.server->last_time_online);
         c.server->last_time_online = clock.current;
-        c.server->need_reschedule = false;
+        c.server->stop_after_completion = false;
     }
 
-    // TODO
+    // If the last node processed a job, increment the total job completed
     if (node_type == NODO_QUATTRO) {
         job_completed++;
         return;
     }
 
-    // TODO
+    // Find destination node
     destination = find_destination_node(c.server->node->type);
+
+    // If the destination is the EXIT, increment job dropped
     if (destination == EXIT) {
         nodes[node_type].total_dropped++;
         job_dropped++;
@@ -431,7 +434,7 @@ void process_completion(struct completion c) {
     if (destination != NODO_QUATTRO) {
         nodes[destination].total_arrivals++;
         nodes[destination].node_jobs++;
-        add_job_to_queue(&nodes[destination], c.value);
+        add_job_to_queue(&nodes[destination]);
 
         free_server = find_free_server(nodes[destination]);
         if (free_server != NULL) {
@@ -452,7 +455,7 @@ void process_completion(struct completion c) {
         }
     }
 
-    //TODO The destination is the node 4 with finite queue
+    // The destination is the node 4 with finite queue
     // Update arrivals to the destination
     nodes[destination].total_arrivals++;
 
@@ -462,7 +465,7 @@ void process_completion(struct completion c) {
     // If there is a free server, the queue is empty
     if (free_server != NULL) {
         nodes[destination].node_jobs++;
-        add_job_to_queue(&nodes[destination], c.value);
+        add_job_to_queue(&nodes[destination]);
 
         struct completion completion = {free_server, INFINITY};
         double service = generate_service_time(destination, free_server->stream);

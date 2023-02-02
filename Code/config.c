@@ -15,7 +15,7 @@ network_configuration set_config(const int values_1[NUM_NODES], const int *value
 void init_config() {
 
     int a[] = {8, 20, 2, 9};
-    int b[] = {18, 42, 5, 22};
+    int b[] = {18, 42, 5, 3};
     int c[] = {4, 14, 1, 6};
 
     config = set_config(a, b, c);

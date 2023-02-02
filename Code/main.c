@@ -31,7 +31,6 @@ double infinite_horizon_means_utilization[BATCH_K][NUM_NODES];      // Average u
 double infinite_horizon_loss[BATCH_K];                              // Jobs lost during infinite horizon simulation
 
 int streamID;                   // Current streamID of the simulation
-server *next_completion_server;
 
 // Main function to start the simulation
 int main(int argc, char *argv[]) {
@@ -54,13 +53,15 @@ int main(int argc, char *argv[]) {
 
     // Finite horizon simulation
     if (strcmp(simulation_mode, "FINITE") == 0) {
-        PlantSeeds(231232132); //TODO
+        // Set the random seed outside the simulation cycle
+        PlantSeeds(123123123);
         finite_horizon_simulation(NUM_REPS);
     }
 
     // Infinite horizon simulation
     else if (strcmp(simulation_mode, "INFINITE") == 0) {
-        PlantSeeds(231232132);
+        // Set the random seed outside the simulation cycle
+        PlantSeeds(123123123);
         infinite_horizon_simulation(time_slot);
     }
 

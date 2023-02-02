@@ -31,49 +31,54 @@ void infinite_horizon_simulation(int timeSlot) {
     clear_environment();
     
     // Initialize the network
-    init_network(0);
+    init_network();
     network.time_slot = timeSlot;
 
     // Update the network
     update_network();
 
-    // Launch k batch
+    // Launch k batches
     for (int k = 0; k < BATCH_K; k++) {
 
         // Launch a batch
-        infinite_horizon_batch(k);
+        infinite_horizon_batch(timeSlot, k);
+
+        if (k == 0) {
+            print_statistics(&network, nodes, clock.current);
+        }
         
         // Reset network statistics after every run
-        reset_nodes();
-        print_progress_bar(k, BATCH_K, k-1);
+        reset_nodes_parameters();
+        //print_progress_bar(k, BATCH_K, k-1);
     }
 
     // Print results
     print_csv_rt_infinite_horizon(timeSlot);
     update_server_online_time();
     print_results_infinite_horizon(timeSlot);
-}
+    }
 
 // Run an infinite horizon batch
-void infinite_horizon_batch(int k) {
+void infinite_horizon_batch(int timeSlot, int k) {
 
-    // TODO Repeat for BATCH_B times
-    int n, q = 0;
-    while (n < BATCH_B || q < BATCH_B) {
+    network.time_slot = timeSlot;
+
+    // Repeat for BATCH_B times
+    int arr = 0, compl = 0;
+    while (arr < BATCH_B || compl < BATCH_B) {
 
         // Find the next completion
         struct completion *next_completion = &completions_list.list[0];
-        server *nextCompletionServer = next_completion->server;
 
-        // TODO come succede sta cosa?
-        if (n >= BATCH_B) {
+        // Compute next clock
+        if (arr >= BATCH_B) {
             clock.next = next_completion->value;
             if (clock.next == INFINITY) {
                 break;
             }
         }
 
-        // Compute next clock
+        // Compute next clock (get next event)
         else {
             clock.next = min(next_completion->value, clock.arrival);
         }
@@ -92,13 +97,13 @@ void infinite_horizon_batch(int k) {
         // The current event is an arrival
         if (clock.current == clock.arrival) {
             process_arrival();
-            n++;
+            arr++;
         }
 
         // The current event is a completion
         else {
             process_completion(*next_completion);
-            q++;
+            compl++;
         }
     }
 
@@ -111,13 +116,10 @@ void infinite_horizon_batch(int k) {
 // Compute statistics of the infinite horizon simulation batch
 void compute_statistics_infinite_horizon(network_struct *networkStruct, struct node nodesStruct[], double current_clock, double rt_arr[], int pos, double dl_arr[][NUM_NODES]) {
     double visit_rt = 0;
-    double sys_delay = 0;
 
     for (int i = 0; i < NUM_NODES; i++) {
-        int m = networkStruct->online_servers[i];
         int arr = nodesStruct[i].total_arrivals;
         int r_arr = arr - nodesStruct[i].total_losses;
-        int jq = nodesStruct[i].queue_jobs;
         double inter = current_clock / arr;
 
         double wait = nodesStruct[i].time.node / arr;
@@ -129,7 +131,7 @@ void compute_statistics_infinite_horizon(network_struct *networkStruct, struct n
         double mu = 1 / service;
         double thr = min(networkStruct->online_servers[i] * mu, lambda_i);
 
-        if (i == NODO_TRE) {
+        if (i == NODO_QUATTRO) {
             thr = lambda_i;
         }
 
@@ -153,7 +155,7 @@ void compute_utilization_infinite_horizon(int k) {
             }
         }
 
-        if (i == NODO_TRE) {
+        if (i == NODO_QUATTRO) {
             double loss_percentage = (float)nodes[i].total_losses / (float)nodes[i].total_arrivals;
             infinite_horizon_loss[k] = loss_percentage;
         }
@@ -167,8 +169,8 @@ void print_csv_rt_infinite_horizon(int slot) {
     char filename[100];
     char filename_p_loss[100];
 
-    snprintf(filename, 100, "sium");
-    snprintf(filename_p_loss, 100, "sium");
+    snprintf(filename, 100, "results/infinite_horizon/rt_infinite_slot_%d.csv", slot);
+    snprintf(filename_p_loss, 100, "results/infinite_horizon/p_loss_infinite_slot_%d.csv", slot);
 
     FILE *csv;
     FILE *csv_p_loss;
@@ -186,7 +188,7 @@ void print_csv_rt_infinite_horizon(int slot) {
 
     for (int i = 0; i < NUM_NODES - 1; i++) {
         char filename_delays[100];
-        snprintf(filename_delays, 100, "sium");
+        snprintf(filename_delays, 100, "results/infinite_horizon/delay_%d_infinite_slot_%d.csv", i, slot);
         FILE *csv_delays;
         csv_delays = open_csv(filename_delays);
 
@@ -201,11 +203,10 @@ void print_csv_rt_infinite_horizon(int slot) {
 // Print on the stdout the results of the infinite horizon simulation
 void print_results_infinite_horizon(int slot) {
     double cost = compute_cost(&network);
-    printf("\nSlot %d configuration cost: %f\n", slot, cost);
+    printf("\n\nSlot %d configuration cost: %f\n", slot, cost);
 
     double l = 0;
     for (int i = 0; i < NUM_NODES; i++) {
-        printf("\nMean utilization for node %s: ", string_node_type(i));
         double p = 0;
         for (int j = 0; j < BATCH_K; j++) {
             p += infinite_horizon_means_utilization[j][i];
@@ -213,9 +214,8 @@ void print_results_infinite_horizon(int slot) {
                 l += infinite_horizon_loss[j];
             }
         }
-
-        printf("%f", p / BATCH_K);
+        printf("\nMean utilization for node %s: %f", string_node_type(i), p / BATCH_K);
     }
 
-    printf("\nLoss perc %f: \n", l / BATCH_K);
+    printf("\nLoss perc %f\n", l / BATCH_K);
 }
