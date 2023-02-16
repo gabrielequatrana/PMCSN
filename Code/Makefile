@@ -1,2 +1,2 @@
 all:
-	gcc ./Utils/Standard/rngs.c ./Utils/Standard/rvgs.c ./Logic/logic.c ./Logic/FiniteHorizon/finite_horizon.c ./Logic/InfiniteHorizon/infinite_horizon.c ./Utils/utils.c config.c main.c -lm -o simulate -g
+	gcc ./Utils/Standard/rngs.c ./Utils/Standard/rvgs.c ./Logic/logic.c ./Logic/FiniteHorizon/finite_horizon.c ./Logic/InfiniteHorizon/infinite_horizon.c ./Utils/utils.c config.c main.c -lm -o simulator -g

@@ -1,22 +1,22 @@
-# Progetto PMCSN - Modellistica, simulazione e valutazione delle prestazioni
-Quest progetto permette di simulare una stazione ferroviaria, al fine di valutare il numero ottimo di serventi per gestire una giornata lavorativa di 19 ore.
+# Progetto PMCSN
+Questa repository contiene il codice che permette di eseguire una simulazione relativa a un servizio cloud, per valutare il numero ottimo di server nell'arco di una giornata.
 
-- La cartella ```base``` contiene il programma simulativo per il caso base.
-- La cartella ```migliorativo``` contiene il programma simulativo per l'algoritmo migliorativo.
-- La cartella ```statistiche``` contiene i programmi per generare le statistiche medie dai csv prodotti nelle simulazioni.
+- La cartella ```Code``` contiene il codice del programma di simulazione.
+- La cartella ```Estimator``` contiene gli eseguibili che permettodo generare le statistiche varie statistiche a partire dai csv prodotti nelle simulazioni.
 
 ## Istruzioni
-- Spostarsi sulla cartella ```base``` o ```migliorativo``` a seconda del caso d'uso che si vuole simulare
-- Impostare in ```conf.h``` i parametri del sistema desiderati
-- Impostare in ```main.c``` nella funzione ```init_config()``` la configurazione di serventi che si vuole testare
-- Compilare l'eseguibile tramite il comando ```make```
+- Spostarsi sulla cartella ```Code```
+- Impostare in ```config.h``` i parametri da utilizzare per la simulazione.
+- Impostare in ```config.c``` nella funzione ```init_config()``` la configurazione di serventi che si vuole utilizzare per la simulazione.
+- Compilare l'eseguibile tramite il comando ```make```.
 - Eseguire il programma con il comando:
     ```bash
-    ./simulate-[base/migliorativo] \<MODE> \<SLOT>
+    ./simulator \<MODE> \<SLOT>
     ``` 
-- Recuperare i risultati dalla cartella ```results/<MODE>``` ed eventualmente valutare le statistiche tramite i programmi presenti in ```/statistiche```
+- I risultati della simulazione vengono salvati nella cartella ```Results```.
+- È possibile valutare le statistiche delle simulazione tramite i programmi presenti in ```Estimator```:
 
-    - ```uvs < results.csv```: valuta la media e la varianza 
-    - ```estimate < results.csv```:valuta la media e l'intervallo di confidenza al 95%
-    - ```acs < results.csv```: valuta l'autocorrelazione del campione
+    - ```uvs < file.csv```: calcola media e varianza.
+    - ```estimate < file.csv```: calcola media e l'intervallo di confidenza al 95%.
+    - ```acs < file.csv```: calcola l'autocorrelazione del campione.
 

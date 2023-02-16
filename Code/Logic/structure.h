@@ -4,10 +4,10 @@
 #define STRUCTURE_H
 // Enumerate node types
 enum node_type {
-    NODO_UNO,
-    NODO_DUE,
-    NODO_TRE,
-    NODO_QUATTRO,
+    REQUEST_ACCEPTANCE,
+    SUBSCRIBER_REQUEST_PROCESSING,
+    NON_SUBSCRIBER_REQUEST_PROCESSING,
+    RESPONSE_VALIDATION,
     EXIT
 };
 
@@ -16,7 +16,7 @@ struct clock_struct {
     double current;         // Current simulation time
     double next;            // Time of the next event (arrival/completion)
     double arrival;         // Time of next arrival
-    double current_batch;   // Current batch in infinite horizon simulation
+    double current_in_batch;   // Current simulation time in a batch in infinite horizon simulation
 };
 
 // Structure to keep track of service time of a server
@@ -33,7 +33,7 @@ struct job {
 // Structure to implement a server
 typedef struct {
     int id;                         // Server ID
-    int online;                     // Server activated/deactivated
+    int active;                     // Server activated/deactivated
     int status;                     // Server busy/idle
     int used;                       // Server used/not used
     int stream;                     // Server stream used for rngs
@@ -85,7 +85,7 @@ struct node {
     enum node_type type;        // Node type
 
     struct job *tail_job;       // Last job in the queue
-    struct job *head_server;    // Job being served in the node
+    struct job *head_job;       // Job being served in the node
     struct job *head_queue;     // First job in the queue
 
     int queue_jobs;             // Number of job in the queue

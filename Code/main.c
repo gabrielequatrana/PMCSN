@@ -12,25 +12,11 @@ struct node nodes[NUM_NODES];   // List of nodes in the network
 
 double arrival_rate;    // Current arrival rate
 int job_completed;      // Number of job completed
-int job_dropped;        // Number of job dropped
-int job_lost;           // Number of job lost
 bool slot_switched[3];  // Used to check if the simulation switched to another time slot in finite horizon simulation
 
-network_struct network;                         // Network information
-network_configuration config;                   // Network configuration
-// Network configuration pointer
-completions_list_struct completions_list;       // List of job completed during the simulation
-
-double rep_cost[NUM_REPS];                          // Costs of each repetition of the finite horizon simulation
-double finite_horizon_statistics[NUM_REPS][3];      // Finite horizon simulation statistics
-double infinite_horizon_statistics[BATCH_K];        // Infinite horizon simulation statistics
-double infinite_horizon_delay[BATCH_K][NUM_NODES];  // Infinite horizon simulation delays
-
-double finite_horizon_means_utilization[NUM_REPS][3][NUM_NODES];    // Average utilization of finite horizon simulation
-double infinite_horizon_means_utilization[BATCH_K][NUM_NODES];      // Average utilization of infinite horizon simulation
-double infinite_horizon_loss[BATCH_K];                              // Jobs lost during infinite horizon simulation
-
-int streamID;                   // Current streamID of the simulation
+network_struct network;                     // Network information
+network_configuration config;               // Network configuration
+completions_list_struct completions_list;   // List of job completed during the simulation
 
 // Main function to start the simulation
 int main(int argc, char *argv[]) {

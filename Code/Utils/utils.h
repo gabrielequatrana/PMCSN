@@ -18,20 +18,16 @@ double min(double x, double y);
 
 // Graphic output methods
 void print_line();
-void print_configuration(network_configuration *networkConfiguration);
-void print_progress_bar(double part, double total, double old_part);
-void print_loss_prob(struct node *nodesStruct);
-void print_statistics(network_struct *networkStruct, struct node nodesStruct[], double currentClock);
-void clear_screen();
+void print_configuration();
 
 // CSV methods
 FILE *open_csv(char *filename);
 FILE *open_csv_append_mode(char *filename);
-void append_on_csv_1(FILE *file, double ts);
-void append_on_csv_2(FILE *file, double ts, double p);
-void append_on_csv_3(FILE *file, int rep, double ts, double p);
+void append_on_csv_1(FILE *file, double val);
+void append_on_csv_2(FILE *file, int rep, double val);
+void append_on_csv_3(FILE *file, double val, double clock_val);
 
 // Completions list methods
-int add_to_completions_list(completions_list_struct *c_list, struct completion c);
-int remove_from_completions_list(completions_list_struct *c_list, struct completion c);
-int search_element_completions_list(completions_list_struct *c_list, int len, struct completion c);
+int add_to_completions_list(struct completion c);
+int remove_from_completions_list(struct completion c);
+int search_element_completions_list(struct completion c);

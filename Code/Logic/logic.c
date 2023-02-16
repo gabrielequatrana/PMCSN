@@ -6,9 +6,14 @@
 #include "logic.h"
 #include "var.h"
 
+int streamID;   // Current streamID of the simulation
+
+const network_struct empty_network;                      // Used to reset the network when switching time slot
+const completions_list_struct empty_completions_list;    // Used to reset the completions list when switching time slot
+
 // Reset the parameters of the network nodes between batches
 void reset_nodes_parameters() {
-    clock.current_batch = clock.current;
+    clock.current_in_batch = clock.current;
     for (int i = 0; i < NUM_NODES; i++) {
         nodes[i].total_arrivals = 0;
         nodes[i].total_completions = 0;
@@ -45,7 +50,7 @@ void init_nodes() {
             server s;
             s.id = j;
             s.status = IDLE;
-            s.online = DEACTIVATED;
+            s.active = DEACTIVATED;
             s.used = NOT_USED;
             s.stream = streamID++;
             s.last_time_online = 0.0;
@@ -58,7 +63,7 @@ void init_nodes() {
             network.server_list[i][j] = s;
 
             struct completion c = {&network.server_list[i][j], INFINITY};
-            add_to_completions_list(&completions_list, c);
+            add_to_completions_list(c);
         }
     }
 }
@@ -91,15 +96,13 @@ void init_network() {
     // Initialize nodes
     init_nodes();
 
-    // Set the current time slot in finite horizon simulation
+    // Set time slot 0 in finite horizon simulation
     if (strcmp(simulation_mode, "FINITE") == 0) {
         set_time_slot(0);
     }
 
     // Initialize some parameters
     job_completed = 0;
-    job_dropped = 0;
-    job_lost = 0;
     clock.arrival = generate_arrival_time(clock.current);
     completions_list.num_completions = 0;
 }
@@ -127,14 +130,14 @@ double generate_service_time(enum node_type type, int stream) {
 
     // Generate the service time based on the node
     switch (type) {
-        case NODO_UNO:
-            return Exponential(SERV_TIPOUNO);
-        case NODO_DUE:
-            return Exponential(SERV_TIPODUE);
-        case NODO_TRE:
-            return Exponential(SERV_TIPOTRE);
-        case NODO_QUATTRO:
-            return Exponential(SERV_TIPOQUATTRO);
+        case REQUEST_ACCEPTANCE:
+            return Exponential(SERV_REQUEST_ACCEPTANCE);
+        case SUBSCRIBER_REQUEST_PROCESSING:
+            return Exponential(SERV_SUBSCRIBER_REQUEST_PROCESSING);
+        case NON_SUBSCRIBER_REQUEST_PROCESSING:
+            return Exponential(SERV_NON_SUBSCRIBER_REQUEST_PROCESSING);
+        case RESPONSE_VALIDATION:
+            return Exponential(SERV_RESPONSE_VALIDATION);
         default:
             return 0;
     }
@@ -150,7 +153,7 @@ void activate_servers(int node) {
 
         // Server to activate
         server *s = &network.server_list[node][i];
-        s->online = ACTIVATED;
+        s->active = ACTIVATED;
         s->last_time_online = clock.current;
         s->used = USED;
 
@@ -175,7 +178,7 @@ void activate_servers(int node) {
             s->node->time.server += service_time;
             s->service.service_time += service_time;
 
-            add_to_completions_list(&completions_list, c);
+            add_to_completions_list(c);
         }
 
         // Update network parameters
@@ -201,7 +204,7 @@ void deactivate_servers(int node) {
 
         // Deactivate server
         else {
-            s->online = DEACTIVATED;
+            s->active = DEACTIVATED;
             s->online_time += (clock.current - s->last_time_online);
             s->last_time_online = clock.current;
         }
@@ -232,12 +235,12 @@ void update_network() {
     }
 }
 
-// Update all servers online time in the end of a simulation
+// Update all servers online time at the end of a simulation
 void update_server_online_time() {
     for (int i = 0; i < NUM_NODES; i++) {
         for (int j = 0; j < MAX_SERVERS; j++) {
             server *s = &network.server_list[i][j];
-            if (s->online == ACTIVATED) {
+            if (s->active == ACTIVATED) {
                 s->online_time += (clock.current - s->last_time_online);
                 s->last_time_online = clock.current;
             }
@@ -278,7 +281,7 @@ void add_job_to_queue(struct node *node) {
 
     // Else the job is the head of the queue
     else {
-        node->head_server = job;
+        node->head_job = job;
     }
 
     // Set the new tail as the job added to the queue
@@ -294,7 +297,7 @@ void add_job_to_queue(struct node *node) {
 void remove_job_from_queue(struct node *node) {
 
     // The job to remove is the head of the queue
-    struct job *job = node->head_server;
+    struct job *job = node->head_job;
 
     // If it is the only job in the queue, the queue becomes empty
     if (!job->next) {
@@ -302,7 +305,7 @@ void remove_job_from_queue(struct node *node) {
     }
 
     // The next job becomes the head
-    node->head_server = job->next;
+    node->head_job = job->next;
 
     // If there is a job in the queue, the head of the queue became the next job
     if (node->head_queue != NULL && node->head_queue->next != NULL) {
@@ -321,7 +324,7 @@ void remove_job_from_queue(struct node *node) {
 
 // Compute costs of the network servers and the total cost of all servers
 double compute_cost(network_struct *net) {
-    double cm_costs[] = {COST_TIPOUNO, COST_TIPODUE, COST_TIPOTRE, COST_TIPOQUATTRO};
+    double cm_costs[] = {COST_REQUEST_ACCEPTANCE, COST_SUBSCRIBER_REQUEST_PROCESSING, COST_NON_SUBSCRIBER_REQUEST_PROCESSING, COST_RESPONSE_VALIDATION};
     double costs[4] = {0, 0, 0, 0};
     double total_cost = 0;
 
@@ -342,17 +345,17 @@ double compute_cost(network_struct *net) {
 void process_arrival() {
 
     // Add the arrival in the first node
-    nodes[NODO_UNO].total_arrivals++;
-    nodes[NODO_UNO].node_jobs++;
+    nodes[REQUEST_ACCEPTANCE].total_arrivals++;
+    nodes[REQUEST_ACCEPTANCE].node_jobs++;
 
     // Find a free server in the node one to process the job
-    server *s = find_free_server(nodes[NODO_UNO]);
+    server *s = find_free_server(nodes[REQUEST_ACCEPTANCE]);
 
     // If there is a free server, the queue is empty
     if (s != NULL) {
 
         // Process the job
-        double service_time = generate_service_time(NODO_UNO, s->stream);
+        double service_time = generate_service_time(REQUEST_ACCEPTANCE, s->stream);
         struct completion completion = {s, INFINITY};
         completion.value = clock.current + service_time;
         s->status = BUSY;
@@ -360,14 +363,14 @@ void process_arrival() {
         s->service.service_time += service_time;
         s->service.job_served++;
 
-        add_to_completions_list(&completions_list, completion);
-        add_job_to_queue(&nodes[NODO_UNO]);
+        add_to_completions_list(completion);
+        add_job_to_queue(&nodes[REQUEST_ACCEPTANCE]);
     }
 
     // Else add the job to the queue
     else {
-        add_job_to_queue(&nodes[NODO_UNO]);
-        nodes[NODO_UNO].queue_jobs++;
+        add_job_to_queue(&nodes[REQUEST_ACCEPTANCE]);
+        nodes[REQUEST_ACCEPTANCE].queue_jobs++;
     }
 
     // Generate the next arrival
@@ -387,7 +390,7 @@ void process_completion(struct completion c) {
 
     // Remove the job from the queue and the completion from the list
     remove_job_from_queue(&nodes[node_type]);
-    remove_from_completions_list(&completions_list, c);
+    remove_from_completions_list(c);
 
     // Generate the next completion if there are jobs in queue
     if (nodes[node_type].queue_jobs > 0 && !c.server->stop_after_completion) {
@@ -398,7 +401,7 @@ void process_completion(struct completion c) {
         c.server->service.service_time += service;
         c.server->service.job_served++;
 
-        add_to_completions_list(&completions_list, c);
+        add_to_completions_list(c);
     }
 
     // Else the server is IDLE
@@ -408,14 +411,14 @@ void process_completion(struct completion c) {
 
     // Deactivate the server after the completion if it is flagged
     if (c.server->stop_after_completion) {
-        c.server->online = DEACTIVATED;
+        c.server->active = DEACTIVATED;
         c.server->online_time += (clock.current - c.server->last_time_online);
         c.server->last_time_online = clock.current;
         c.server->stop_after_completion = false;
     }
 
     // If the last node processed a job, increment the total job completed
-    if (node_type == NODO_QUATTRO) {
+    if (node_type == RESPONSE_VALIDATION) {
         job_completed++;
         return;
     }
@@ -426,12 +429,11 @@ void process_completion(struct completion c) {
     // If the destination is the EXIT, increment job dropped
     if (destination == EXIT) {
         nodes[node_type].total_dropped++;
-        job_dropped++;
         return;
     }
 
     // The destination is a node with an infinite queue
-    if (destination != NODO_QUATTRO) {
+    if (destination != RESPONSE_VALIDATION) {
         nodes[destination].total_arrivals++;
         nodes[destination].node_jobs++;
         add_job_to_queue(&nodes[destination]);
@@ -441,12 +443,11 @@ void process_completion(struct completion c) {
             struct completion completion = {free_server, INFINITY};
             double service = generate_service_time(destination, free_server->stream);
             completion.value = clock.current + service;
-            add_to_completions_list(&completions_list, completion);
+            add_to_completions_list(completion);
             free_server->status = BUSY;
             free_server->node->time.server += service;
             free_server->service.service_time += service;
             free_server->service.job_served++;
-
             return;
         }
         else {
@@ -455,14 +456,14 @@ void process_completion(struct completion c) {
         }
     }
 
-    // The destination is the node 4 with finite queue
+    // The destination is the node RESPONSE_VALIDATION with finite queue
     // Update arrivals to the destination
     nodes[destination].total_arrivals++;
 
     // Find a free server on the destination node
     free_server = find_free_server(nodes[destination]);
 
-    // If there is a free server, the queue is empty
+    // If there is a free server, the job can be processed
     if (free_server != NULL) {
         nodes[destination].node_jobs++;
         add_job_to_queue(&nodes[destination]);
@@ -470,7 +471,7 @@ void process_completion(struct completion c) {
         struct completion completion = {free_server, INFINITY};
         double service = generate_service_time(destination, free_server->stream);
         completion.value = clock.current + service;
-        add_to_completions_list(&completions_list, completion);
+        add_to_completions_list(completion);
 
         free_server->status = BUSY;
         free_server->node->time.server += service;
@@ -482,8 +483,7 @@ void process_completion(struct completion c) {
     // Else the job is lost
     else {
         job_completed++;
-        job_lost++;
-        nodes[NODO_QUATTRO].total_losses++;
+        nodes[RESPONSE_VALIDATION].total_losses++;
         return;
     }
 }
