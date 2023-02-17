@@ -12,7 +12,7 @@ double infinite_horizon_p_loss[BATCH_K];                    // Infinite horizon 
 
 // Start an infinite horizon simulation
 void infinite_horizon_simulation(int timeSlot) {
-    printf("\n==== Infinite Horizon Simulation slot %d | num_batches %d ====", timeSlot, BATCH_K);
+    printf("\n==== Infinite Horizon Simulation | Time Slot: %d | Number of Batch: %d ====", timeSlot, BATCH_K);
     
     // Initialize configuration
     init_config();

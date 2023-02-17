@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 
     // Two parameters are needed: type of simulation and time slot number (used only in infinite horizon simulation)
     if (argc != 3) {
-        printf("Usage: ./simulate <FINITE/INFINITE> <TIME_SLOT>\n");
+        printf("Usage: ./simulator <FINITE/INFINITE> <TIME_SLOT>\n");
         exit(0);
     }
 
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 
     // Wrong time slot parameter
     if (time_slot > 2) {
-        printf("Specify time slot between 0 and 2\n");
+        printf("Time slot has to be between 0 and 2\n");
         exit(0);
     }
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 
     // Wrong simulation mode parameter
     else {
-        printf("Specify mode FINITE or INFINITE\n");
+        printf("Mode has to be FINITE or INFINITE\n");
         exit(0);
     }
 }
